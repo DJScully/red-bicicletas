@@ -1,3 +1,4 @@
+require('dotenv').config();
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
@@ -27,7 +28,7 @@ var app = express();
 
 
 var mongoose = require("mongoose");
-var mongodb = 'mongodb://localhost/red_bicicletas';
+var mongodb = process.env.MONGO_URI;
 mongoose.connect(mongodb, {useNewUrlParser : true});
 mongoose.Promise = global.Promise;
 var db = mongoose.connection;
@@ -76,6 +77,7 @@ app.post('/forgotPassword',function (req,res) {
 
 
 app.use('/', indexRouter);
+app.use('/usuarios', usuarioRouter);
 app.use('/users', usersRouter);
 app.use("/bicicletas",bicicletaRouter);
 app.use('/API/bicicletas', loggedIn,bicicletasAPIRouter);
