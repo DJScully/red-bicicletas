@@ -7,6 +7,7 @@ var logger = require('morgan');
 const passport = require('./config/passport');
 const session = require('express-session');
 const jwt = require('jsonwebtoken');
+const MongoDBStore = require('connect-mongodb-session')(session);
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -19,12 +20,27 @@ var authAPIRouter = require('./routes/API/auth');
 
 const Usuario = require('./models/usuario');
 const Token = require('./models/Tokens');
+const GoogleStrategy = require('passport-google-oauth20'); 
 
-const store = new session.MemoryStore;
 
 
+var store;
+
+if (process.env.MONGO_ENV === "develoment" ) {
+  store = new MongoDBStore({
+    uri: process.env.MONGO_URI,
+    collection: session
+  });
+
+  store.on('error', function (error) {
+    assert.ifError(error);
+    assert.ok(false);
+  })
+}
 
 var app = express();
+
+
 
 
 var mongoose = require("mongoose");
@@ -46,6 +62,9 @@ app.use(cookieParser());
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/google725b9b0ed245ba8d', function (req,res) {
+ res.sendFile("C:/Users/marka/Desktop/DAH/Jordan/Ejercicio/skully/red-bicicletas/public/google725b9b0ed245ba8d.html")
+})
 
 app.get('/login',function (req,res) {
   res.render('session/login');
@@ -68,12 +87,57 @@ app.get('/logout',function (req,res) {
 })
 
 app.get('/forgotPassword',function (req,res) {
-  
+  res.render('session/forgotPassword');
 })
 
-app.post('/forgotPassword',function (req,res) {
-  
+app.post('/forgotPassword', (req, res, next)=>{
+  Usuario.findOne({email: req.body.email}, function(err, usuario){
+    if(!usuario) return res.render('session/forgotPassword', {info: {message: 'No existe la clave'}});
+    usuario.resetPassword(function(err){
+      if(err) return next(err);
+      console.log('session/forgotPasswordMessage');
+    })
+    res.render('session/forgotPasswordMessage')
+  })
 })
+
+app.get('/resetPassword/:token', (req, res, next)=>{
+  Token.findOne({token: req.params.token}, (err, token)=>{
+    if(!token) return res.status(400).send({type: 'not-verified', msg: 'No existe una clave así'})
+
+    Usuario.findById(token._userId, (err, usuario)=>{
+      if(!usuario) return res.status(400).send({msg: 'No existe un usuario asociado a este password'});
+      res.render('session/resetPassword', {errors: {}, usuario: usuario})
+    })
+  })
+})
+
+app.post('/resetPassword', (req, res)=>{
+  if(req.body.password != req.body.confirm_password) {
+    res.render('session/resetPassword', {errors: {confirm_password: {message: 'No coinciden las contraseñas'}}});
+    return;
+  }
+  Usuario.findOne({email: req.body.email}, (err, usuario)=>{
+    usuario.password = req.body.password;
+    usuario.save(err=>{
+      if(err){
+        res.render('session/resetPassword', {errors: err.errors, usuario: new Usuario});
+      } else {
+        res.redirect('/login')
+      }
+    })
+  })
+})
+
+app.get('/auth/google',
+  passport.authenticate('google', { scope:
+      [ 'email', 'profile' ] }
+));
+
+app.get( '/auth/google/callback', passport.authenticate( 'google', {
+        successRedirect: '/',
+        failureRedirect: '/error'
+}));
 
 
 app.use('/', indexRouter);
@@ -98,6 +162,11 @@ app.use(session({
 app.use(function(req, res, next) {
   next(createError(404));
 });
+
+app.use('/privacy_policy', (req, res) => {
+  res.sendFile('public/privacy_policy.html');
+});
+
 
 // error handler
 app.use(function(err, req, res, next) {
@@ -134,6 +203,18 @@ function validarUsuario(req, res, next) {
     }
   });
 }
+
+/*passport.use( new GoogleStrategy ({
+  clientID:     process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: process.env.HOST + "/auth/google/callback"
+},
+function(request, accessToken, refreshToken, profile, done) {
+  User.findOrCreate({ googleId: profile.id }, function (err, user) {
+    return done(err, user);
+  });
+}
+));*/
 
 
 module.exports = app;
