@@ -62,9 +62,7 @@ app.use(cookieParser());
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/google725b9b0ed245ba8d', function (req,res) {
- res.sendFile("C:/Users/marka/Desktop/DAH/Jordan/Ejercicio/skully/red-bicicletas/public/google725b9b0ed245ba8d.html")
-})
+
 
 app.get('/login',function (req,res) {
   res.render('session/login');
@@ -167,6 +165,9 @@ app.use('/privacy_policy', (req, res) => {
   res.sendFile('public/privacy_policy.html');
 });
 
+app.use('/google725b9b0ed245ba8d', function (req,res) {
+ res.sendFile("public/google725b9b0ed245ba8d.html")
+})
 
 // error handler
 app.use(function(err, req, res, next) {
